@@ -3,6 +3,7 @@
 from typing import Any
 
 from config.nim import NimSettings
+from providers.account_pool import AccountPool
 from providers.base import ProviderConfig
 from providers.openai_compat import OpenAICompatibleProvider
 
@@ -12,13 +13,20 @@ from .request import build_request_body
 class NvidiaNimProvider(OpenAICompatibleProvider):
     """NVIDIA NIM provider using official OpenAI client."""
 
-    def __init__(self, config: ProviderConfig, *, nim_settings: NimSettings):
+    def __init__(
+        self,
+        config: ProviderConfig,
+        *,
+        nim_settings: NimSettings,
+        account_pool: AccountPool | None = None,
+    ):
         super().__init__(
             config,
             provider_name="NIM",
             base_url=config.base_url or "https://integrate.api.nvidia.com/v1",
             api_key=config.api_key,
             nim_settings=nim_settings,
+            account_pool=account_pool,
         )
 
     def _build_request_body(self, request: Any) -> dict:
