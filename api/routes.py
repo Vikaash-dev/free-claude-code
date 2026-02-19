@@ -116,6 +116,24 @@ async def health():
     return {"status": "healthy"}
 
 
+@router.get("/account-status")
+async def account_status(provider: BaseProvider = Depends(get_provider)):
+    """Get status of all accounts in the pool."""
+    pool = getattr(provider, "_account_pool", None)
+    if pool is None:
+        return {
+            "mode": "single",
+            "accounts": 1,
+            "strategy": None,
+        }
+    return {
+        "mode": "multi",
+        "accounts": pool.account_count,
+        "strategy": pool.strategy,
+        "account_stats": pool.get_stats(),
+    }
+
+
 @router.post("/stop")
 async def stop_cli(request: Request):
     """Stop all CLI sessions and pending tasks."""

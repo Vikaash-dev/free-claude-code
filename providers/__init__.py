@@ -1,5 +1,6 @@
 """Providers package - implement your own provider by extending BaseProvider."""
 
+from .account_pool import AccountPool
 from .base import BaseProvider, ProviderConfig
 from .exceptions import (
     APIError,
@@ -15,6 +16,7 @@ from .open_router import OpenRouterProvider
 
 __all__ = [
     "APIError",
+    "AccountPool",
     "AuthenticationError",
     "BaseProvider",
     "InvalidRequestError",

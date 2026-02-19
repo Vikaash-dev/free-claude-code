@@ -9,6 +9,7 @@ import httpx
 from loguru import logger
 from openai import AsyncOpenAI
 
+from providers.account_pool import AccountPool
 from providers.base import BaseProvider, ProviderConfig
 from providers.common import (
     ContentType,
@@ -32,27 +33,44 @@ class OpenAICompatibleProvider(BaseProvider):
         base_url: str,
         api_key: str,
         nim_settings: Any | None = None,
+        account_pool: AccountPool | None = None,
     ):
         super().__init__(config)
         self._provider_name = provider_name
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
         self._nim_settings = nim_settings
-        self._global_rate_limiter = GlobalRateLimiter.get_instance(
-            rate_limit=config.rate_limit,
-            rate_window=config.rate_window,
-        )
-        self._client = AsyncOpenAI(
-            api_key=self._api_key,
-            base_url=self._base_url,
-            max_retries=0,
-            timeout=httpx.Timeout(
-                config.http_read_timeout,
-                connect=config.http_connect_timeout,
-                read=config.http_read_timeout,
-                write=config.http_write_timeout,
-            ),
-        )
+        self._account_pool = account_pool
+
+        if account_pool is not None:
+            logger.info(
+                "%s: Using account pool with %d account(s), strategy=%s",
+                provider_name,
+                account_pool.account_count,
+                account_pool.strategy,
+            )
+            # When using pool, _client is the first account's client (for compat)
+            self._client = account_pool._accounts[0].client
+            self._global_rate_limiter = GlobalRateLimiter.get_instance(
+                rate_limit=config.rate_limit,
+                rate_window=config.rate_window,
+            )
+        else:
+            self._global_rate_limiter = GlobalRateLimiter.get_instance(
+                rate_limit=config.rate_limit,
+                rate_window=config.rate_window,
+            )
+            self._client = AsyncOpenAI(
+                api_key=self._api_key,
+                base_url=self._base_url,
+                max_retries=0,
+                timeout=httpx.Timeout(
+                    config.http_read_timeout,
+                    connect=config.http_connect_timeout,
+                    read=config.http_read_timeout,
+                    write=config.http_write_timeout,
+                ),
+            )
 
     def _build_request_body(self, request: Any) -> dict:
         """Build request body. Override in subclasses."""
@@ -156,9 +174,18 @@ class OpenAICompatibleProvider(BaseProvider):
         error_message = ""
 
         try:
-            stream = await self._global_rate_limiter.execute_with_retry(
-                self._client.chat.completions.create, **body, stream=True
-            )
+            if self._account_pool is not None:
+
+                async def _create_stream(client: AsyncOpenAI, **kw: Any) -> Any:
+                    return await client.chat.completions.create(**kw, stream=True)
+
+                stream = await self._account_pool.execute_with_retry(
+                    _create_stream, **body
+                )
+            else:
+                stream = await self._global_rate_limiter.execute_with_retry(
+                    self._client.chat.completions.create, **body, stream=True
+                )
             async for chunk in stream:
                 if getattr(chunk, "usage", None):
                     usage_info = chunk.usage

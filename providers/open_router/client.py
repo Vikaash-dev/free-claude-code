@@ -3,6 +3,7 @@
 from collections.abc import Iterator
 from typing import Any
 
+from providers.account_pool import AccountPool
 from providers.base import ProviderConfig
 from providers.common import SSEBuilder
 from providers.openai_compat import OpenAICompatibleProvider
@@ -15,12 +16,15 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 class OpenRouterProvider(OpenAICompatibleProvider):
     """OpenRouter provider using OpenAI-compatible API."""
 
-    def __init__(self, config: ProviderConfig):
+    def __init__(
+        self, config: ProviderConfig, *, account_pool: AccountPool | None = None
+    ):
         super().__init__(
             config,
             provider_name="OPENROUTER",
             base_url=config.base_url or OPENROUTER_BASE_URL,
             api_key=config.api_key,
+            account_pool=account_pool,
         )
 
     def _build_request_body(self, request: Any) -> dict:

@@ -23,6 +23,10 @@ class Settings(BaseSettings):
 
     # ==================== OpenRouter Config ====================
     open_router_api_key: str = Field(default="", validation_alias="OPENROUTER_API_KEY")
+    # Comma-separated list of OpenRouter API keys for multi-account
+    open_router_api_keys: str = Field(
+        default="", validation_alias="OPENROUTER_API_KEYS"
+    )
 
     # ==================== Messaging Platform Selection ====================
     # Valid: "telegram" | "discord"
@@ -32,6 +36,14 @@ class Settings(BaseSettings):
 
     # ==================== NVIDIA NIM Config ====================
     nvidia_nim_api_key: str = ""
+    # Comma-separated list of NVIDIA NIM API keys for multi-account
+    nvidia_nim_api_keys: str = Field(default="", validation_alias="NVIDIA_NIM_API_KEYS")
+
+    # ==================== Multi-Account Config ====================
+    # Strategy: "round_robin" | "least_used"
+    account_selection_strategy: str = Field(
+        default="round_robin", validation_alias="ACCOUNT_SELECTION_STRATEGY"
+    )
 
     # ==================== LM Studio Config ====================
     lm_studio_base_url: str = Field(
